@@ -12,12 +12,13 @@ from ase import neighborlist as asn
 import csv
 import torch as th
 from dgl import DGLGraph
+from sklearn.model_selection import ShuffleSplit
 
 
 class CrystalsDataset(Dataset):
     """Crystals dataset."""
 
-    def __init__(self, idxs, root_dir="", n_elements = 118):
+    def __init__(self, idxs, root_dir=""):
         """.
 
         Args:
@@ -29,10 +30,9 @@ class CrystalsDataset(Dataset):
         """
         self.root_dir = root_dir
         self.idxs = np.array(idxs)
-        self.n_elements = n_elements
 
         self.target = []
-        with open(f'{self.root_dir}data/train.csv', 'r') as tf:
+        with open(f'{self.root_dir}train.csv', 'r') as tf:
             next(tf)
             reader = csv.reader(tf)
             for row in reader:
@@ -45,15 +45,15 @@ class CrystalsDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        def transform(system: ase.atoms.Atoms, n_elements = self.n_elements):
+        def transform(system: ase.atoms.Atoms):
             """Create graph from atoms object."""
 
             def dist_value_to_onehot(dist):
                 bins = np.array([0.7, 1.15, 1.6, 2.05, 2.5, 2.95, 3.40, 3.85, 4.3,
                                  4.75, 5.2],
-                                dtype=np.float16)
+                                dtype=np.float)
                 value_pos = np.searchsorted(bins, dist)
-                return np.eye(10, dtype=np.uint8)[value_pos - 1]
+                return np.eye(10, dtype=np.int)[value_pos - 1]
 
             
             Zs_encode = {
@@ -78,12 +78,12 @@ class CrystalsDataset(Dataset):
             # The node labels are vectors with one hot encoded atomic numbers
             nodes_atts = [Zs_encode[Z]
                           for Z in Zs]
-            nodes_atts = th.Tensor(nodes_atts).type(th.uint8)
+            nodes_atts = th.Tensor(nodes_atts).type(th.int)
 
             # The edge attributes are distances one hot encoded according to bins in
             # function dist_value_to_onehot
             edges_index = [th.Tensor(nl[0]).type(
-                th.long), th.Tensor(nl[1]).type(th.long)]
+                th.int), th.Tensor(nl[1]).type(th.int)]
             edges_atts = th.Tensor(dist_value_to_onehot(nl[2])).type(th.FloatTensor)
             
             g = DGLGraph()
@@ -101,10 +101,30 @@ class CrystalsDataset(Dataset):
 
         target = (self.target[self.idxs[idx]])
         system = read(
-            f"{self.root_dir}data/train/{self.idxs[idx]+1}/aseCL_geometry.xyz")
+            f"train/{self.idxs[idx]+1}/aseCL_geometry.xyz")
 
         system = transform(system)
 
         # sample = {'system': system, 'target': target}
 
         return system, target, self.idxs[idx]
+
+# Dataset train, valid, test partitions
+def partitions():
+    """
+    Returns:
+    (train_idxs, valid_idxs, test_idxs)
+    
+    """
+    idxs = np.arange(0, 2400, 1)
+    spl1 = ShuffleSplit(
+        n_splits=1, test_size=0.20, random_state=0).split(idxs)
+    spl1 = tuple(spl1)
+    train_idxs, valid_idxs = spl1[0][0], spl1[0][1]
+
+    spl2 = ShuffleSplit(
+        n_splits=1, test_size=1. / 7., random_state=0).split(train_idxs)
+    spl2 = tuple(spl2)
+    train_idxs, test_idxs = spl2[0][0], spl2[0][1]
+    del(idxs)
+    return train_idxs, valid_idxs, test_idxs
