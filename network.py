@@ -1,6 +1,9 @@
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
+import dgl.function as fn
+from dgl.nn.pytorch import GraphConv
+import dgl
 
 class CG_CNN_Layer(nn.Module):
     def __init__(self, in_feats):
@@ -20,9 +23,9 @@ class CG_CNN_Layer(nn.Module):
         msg = (th.sigmoid(self.linearf(msg))) * (F.softplus(self.linears(msg)))
         return {'m': msg}
 
-    def forward(self, g, features):
+    def forward(self, g, feature):
         with g.local_scope():
-            g.ndata['env'] = features
+            g.ndata['env'] = feature
             g.update_all(message_func=self.CGCNN_message,
                          reduce_func=fn.sum(msg='m',out='m_sum'))
             env = g.ndata['env'] + g.ndata['m_sum']
@@ -43,18 +46,23 @@ class Net(nn.Module):
         self.mlp22 = nn.Linear(neuron_ratios[1][0] * in_feats, neuron_ratios[1][1] * in_feats)
         self.mlp23 = nn.Linear(neuron_ratios[1][1] * in_feats, 1)
         self.activation = activation()
+        self.pooling = dgl.nn.pytorch.glob.AvgPooling()
+        
 
     def forward(self, graphs):
-
+        
+        graphs = dgl.add_self_loop(graphs)
         out = self.conv1(graphs, graphs.ndata['Z'])
         if self.n_conv>1:
             out = self.conv2(graphs, out)
             if self.n_conv>2:
                 out = self.conv3(graphs, out)
+        #print(out.shape)
         with graphs.local_scope():
             graphs.ndata['env'] = out
-            out = dgl.readout.mean_nodes(graphs, 'env')
+            out = self.pooling(graphs,graphs.ndata['env'])
             out = self.activation(self.mlp21(out))
             out = self.activation(self.mlp22(out))
             out = self.mlp23(out)
+
             return out
