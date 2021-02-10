@@ -4,7 +4,7 @@ The dataset was extracted from [NOMAD 2018 Kaggle Competition](https://www.kaggl
 
 Training steps:
 
-<img src="images/training_steps.png" width="550" height="200">
+<img src="images/training_steps.png" width="1000" height="200">
 
 Representation (a) and neural network (b) reproduced from the cited [article](https://arxiv.org/abs/1710.10324):
 
