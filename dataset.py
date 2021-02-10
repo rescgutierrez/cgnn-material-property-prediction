@@ -27,7 +27,7 @@ class GraphDataset(Dataset):
     def __getitem__(self, idx):
             
         i = int(self.idxs[idx])
-        graphs, labels = dgl.data.load_graphs(self.filename,[i])
+        graphs, labels = dgl.data.load_graphs(self.filename,[i-1])
         
 
         return graphs, labels, self.idxs[idx]
