@@ -14,10 +14,11 @@ Representation (a) and neural network (b) reproduced from the cited [article](ht
 <img src="images/RealVsPredicted.png">
 
 ## Comments
-Pros:
+Remarkable:
 - A simple transformation from input geometry text file into crystal graph representation combining Atomic Simulation Environment and Deep Graph Library
 - Quick training (maximum of around 8s per epoch)
 
-Cons:
+Improvable:
 - An adaptation in the node attributes has been done due to the reduced number of samples (2400 in this work, more than 10 000 in the paper), resulting in a model less general than the cited.
-- 0.2860 MAE is similar to the cited paper, but can be improved considering the model is being tuned for a specific set of materials.
+- The Mean Absoute Error obatined (0.2860) is similar to the cited paper, but can be improved considering the model is being tuned for a specific set of materials.
+- No hyperparameter tuning has been done.
